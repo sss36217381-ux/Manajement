@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laporan OPT – SIGTEMBAKAU</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="/dashboard.html"><span class="leaf">🌿</span>
+    <div><div>SIGTEMBAKAU</div><div class="navbar-subtitle">Monitoring OPT Tembakau</div></div>
+  </a>
+  <div class="navbar-spacer"></div>
+  <div class="navbar-user" onclick="doLogout()">
+    <div class="avatar" id="nav-user-avatar">A</div>
+    <div class="user-info">
+      <span id="nav-user-name">Pengguna</span>
+      <span class="user-role" id="nav-user-role">ROLE</span>
+    </div>
+    <span style="font-size:18px;opacity:0.8;">⏏</span>
+  </div>
+</nav>
+
+<nav class="sidebar">
+  <div class="sidebar-section">Menu Utama</div>
+  <a href="/dashboard.html" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+  <a href="/peta.html" class="nav-item"><span class="icon">🗺️</span> Peta WebGIS</a>
+  <a href="/lahan.html" class="nav-item"><span class="icon">🌾</span> Data Lahan</a>
+  <a href="/harga.html" class="nav-item"><span class="icon">💰</span> Harga Tembakau</a>
+  <a href="/opt.html" class="nav-item active"><span class="icon">🐛</span> Laporan OPT</a>
+  <div class="sidebar-section">Administrasi</div>
+  <a href="/admin.html" class="nav-item" id="menu-admin"><span class="icon">⚙️</span> Manajemen User</a>
+  <div class="sidebar-footer">🌿 SIGTEMBAKAU v1.0</div>
+</nav>
+
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🐛 Laporan OPT Tembakau</div>
+      <div class="page-subtitle">Pemantauan dan penanggulangan Organisme Pengganggu Tumbuhan</div>
+    </div>
+    <button class="btn btn-warn" onclick="openModalLapor()">+ Laporkan OPT</button>
+  </div>
+
+  <!-- STATS OPT -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+    <div class="kpi-card danger"><div class="kpi-icon">🔴</div><div class="kpi-value" id="stat-baru">-</div><div class="kpi-label">Laporan Baru</div></div>
+    <div class="kpi-card warn"><div class="kpi-icon">🟡</div><div class="kpi-value" id="stat-tl">-</div><div class="kpi-label">Ditindaklanjuti</div></div>
+    <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-value" id="stat-selesai">-</div><div class="kpi-label">Selesai</div></div>
+    <div class="kpi-card brown"><div class="kpi-icon">📐</div><div class="kpi-value" id="stat-luas-opt">-</div><div class="kpi-label">Total Luas Terserang</div></div>
+  </div>
+
+  <!-- FILTER -->
+  <div class="card mb-16" style="padding:12px 16px;">
+    <div class="flex" style="gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:120px;">
+        <label>Status</label>
+        <select id="f-status" onchange="loadOPT()">
+          <option value="">Semua Status</option>
+          <option value="baru">Baru</option>
+          <option value="ditindaklanjuti">Ditindaklanjuti</option>
+          <option value="selesai">Selesai</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <label>Kategori</label>
+        <select id="f-kategori" onchange="loadOPT()">
+          <option value="">Semua Kategori</option>
+          <option value="hama">Hama</option>
+          <option value="penyakit">Penyakit</option>
+          <option value="bencana">Bencana</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <label>Tingkat Serangan</label>
+        <select id="f-tingkat" onchange="loadOPT()">
+          <option value="">Semua Tingkat</option>
+          <option value="ringan">Ringan</option>
+          <option value="sedang">Sedang</option>
+          <option value="berat">Berat</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary" onclick="loadOPT()">🔍 Filter</button>
+      <a href="/peta.html" class="btn btn-primary btn-sm">🗺 Lihat di Peta</a>
+    </div>
+  </div>
+
+  <!-- TABEL LAPORAN OPT -->
+  <div class="card mb-16">
+    <div class="table-wrap">
+      <table id="tbl-opt">
+        <thead>
+          <tr>
+            <th>#</th><th>OPT</th><th>Kategori</th><th>Wilayah</th>
+            <th>Pelapor</th><th>Tgl Lapor</th><th>Tingkat</th>
+            <th>Luas (Ha)</th><th>Status</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="opt-body">
+          <tr><td colspan="10" class="text-center text-muted">Memuat data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- REFERENSI OPT -->
+  <div class="card">
+    <div class="card-title">📚 Referensi Jenis OPT Tembakau</div>
+    <div id="jenis-opt-list" style="margin-top:8px;"></div>
+  </div>
+</main>
+
+<!-- MODAL DETAIL OPT -->
+<div class="modal-backdrop" id="modal-detail">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <span id="modal-detail-title">Detail Laporan OPT</span>
+      <span style="cursor:pointer;font-size:20px;" onclick="closeModal('modal-detail')">✕</span>
+    </div>
+    <div class="modal-body" id="modal-detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-detail')">Tutup</button>
+      <button class="btn btn-warn" id="btn-tl" onclick="updateStatus('ditindaklanjuti')">🟡 Tindaklanjuti</button>
+      <button class="btn btn-primary" id="btn-selesai" onclick="updateStatus('selesai')">✅ Tandai Selesai</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LAPOR OPT -->
+<div class="modal-backdrop" id="modal-lapor">
+  <div class="modal">
+    <div class="modal-header">
+      <span>🐛 Laporkan OPT Baru</span>
+      <span style="cursor:pointer;font-size:20px;" onclick="closeModal('modal-lapor')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Jenis OPT *</label>
+        <select id="l-jenis-opt"></select>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Tanggal Lapor *</label>
+          <input type="date" id="l-tanggal">
+        </div>
+        <div class="form-group">
+          <label>Tingkat Serangan *</label>
+          <select id="l-tingkat">
+            <option value="ringan">Ringan (&lt;25%)</option>
+            <option value="sedang">Sedang (25-50%)</option>
+            <option value="berat">Berat (&gt;50%)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Wilayah / Lokasi Kejadian *</label>
+        <input type="text" id="l-wilayah" placeholder="Kecamatan / Desa, Kabupaten">
+      </div>
+      <div class="form-group">
+        <label>Luas Terserang (Ha) *</label>
+        <input type="number" id="l-luas" step="0.01" min="0.01" placeholder="Contoh: 0.50">
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Latitude *</label>
+          <input type="number" id="l-lat" step="0.0001" placeholder="-7.3300">
+        </div>
+        <div class="form-group">
+          <label>Longitude *</label>
+          <input type="number" id="l-lng" step="0.0001" placeholder="110.1200">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Deskripsi Kejadian</label>
+        <textarea id="l-deskripsi" placeholder="Jelaskan gejala, kondisi lahan, tindakan awal yang sudah dilakukan..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-lapor')">Batal</button>
+      <button class="btn btn-warn" onclick="submitLaporan()">🐛 Kirim Laporan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/static/js/utils.js"></script>
+<script>
+let currentUser, allOPT = [], selectedOPTId = null;
+
+async function init() {
+  currentUser = await checkAuth();
+  if (!currentUser) return;
+  renderNavUser(currentUser);
+  if (!['admin'].includes(currentUser.role)) {
+    document.getElementById('menu-admin').classList.add('hidden');
+  }
+  document.getElementById('l-tanggal').value = new Date().toISOString().split('T')[0];
+  await Promise.all([loadJenisOPT(), loadOPT()]);
+}
+
+async function loadJenisOPT() {
+  const data = await API.get('/api/opt/jenis');
+  // Populate modal select
+  const sel = document.getElementById('l-jenis-opt');
+  data.forEach(j => {
+    sel.innerHTML += `<option value="${j.id_jenis_opt}">${j.nama_opt} (${j.kategori})</option>`;
+  });
+  // Render referensi card
+  const refDiv = document.getElementById('jenis-opt-list');
+  refDiv.innerHTML = data.map(j => `
+    <div class="card" style="margin-bottom:10px;padding:14px;border-left:4px solid ${
+      j.kategori === 'hama' ? '#f59e0b' : j.kategori === 'penyakit' ? '#ef4444' : '#3b82f6'
+    }">
+      <div class="flex-between">
+        <strong>${j.kategori === 'hama' ? '🐛' : j.kategori === 'penyakit' ? '🦠' : '⛈️'} ${j.nama_opt}</strong>
+        <span class="badge ${j.kategori === 'hama' ? 'badge-warn' : j.kategori === 'penyakit' ? 'badge-danger' : 'badge-info'}">${j.kategori}</span>
+      </div>
+      <div style="margin-top:8px;font-size:12.5px;">
+        <div><strong>Gejala:</strong> ${j.gejala || '-'}</div>
+        <div style="margin-top:4px;color:#166534;"><strong>✅ Rekomendasi:</strong> ${j.rekomendasi || '-'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadOPT() {
+  showLoading('Memuat laporan OPT...');
+  try {
+    let url = '/api/opt?limit=100';
+    const s = document.getElementById('f-status').value;
+    const k = document.getElementById('f-kategori').value;
+    const t = document.getElementById('f-tingkat').value;
+    if (s) url += `&status=${s}`;
+    if (k) url += `&kategori=${k}`;
+    if (t) url += `&tingkat=${t}`;
+
+    allOPT = await API.get(url);
+    updateStats(allOPT);
+    renderTable(allOPT);
+  } catch(e) {
+    showToast('Gagal memuat OPT: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+function updateStats(data) {
+  document.getElementById('stat-baru').textContent = data.filter(d => d.status === 'baru').length;
+  document.getElementById('stat-tl').textContent = data.filter(d => d.status === 'ditindaklanjuti').length;
+  document.getElementById('stat-selesai').textContent = data.filter(d => d.status === 'selesai').length;
+  const totalHa = data.reduce((s, d) => s + (d.luas_terserang_ha || 0), 0);
+  document.getElementById('stat-luas-opt').textContent = fmtHa(totalHa);
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('opt-body');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Tidak ada laporan OPT.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((o, i) => `
+    <tr>
+      <td class="text-muted">${i+1}</td>
+      <td><strong>${o.nama_opt}</strong></td>
+      <td>${o.kategori === 'hama' ? '🐛' : o.kategori === 'penyakit' ? '🦠' : '⛈️'} ${o.kategori}</td>
+      <td>${o.wilayah_nama || '-'}</td>
+      <td>${o.pelapor}</td>
+      <td>${fmtDate(o.tanggal_lapor)}</td>
+      <td>${badgeTingkat(o.tingkat_serangan)}</td>
+      <td>${fmtHa(o.luas_terserang_ha)}</td>
+      <td>${badgeStatus(o.status)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="openDetail(${o.id_laporan})">Detail</button>
+        ${['admin','operator','penyuluh'].includes(currentUser.role) && o.status !== 'selesai'
+          ? `<button class="btn btn-primary btn-sm" onclick="quickUpdate(${o.id_laporan}, 'selesai')">✅</button>`
+          : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function openDetail(id) {
+  selectedOPTId = id;
+  showLoading('Memuat detail...');
+  try {
+    const o = await API.get(`/api/opt/${id}`);
+    document.getElementById('modal-detail-title').textContent = `🐛 ${o.nama_opt}`;
+    document.getElementById('modal-detail-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          ${o.foto_url ? `<img src="${o.foto_url}" style="width:100%;height:150px;object-fit:cover;border-radius:8px;margin-bottom:8px;">` : ''}
+          <div class="alert alert-warn"><strong>🐛 OPT:</strong> ${o.nama_opt}<br><strong>Kategori:</strong> ${o.kategori}</div>
+          <div><strong>📍 Wilayah:</strong> ${o.wilayah_nama || '-'}</div>
+          <div><strong>👤 Pelapor:</strong> ${o.pelapor}</div>
+          <div><strong>📅 Tanggal:</strong> ${fmtDate(o.tanggal_lapor)}</div>
+          <div><strong>📐 Luas Terserang:</strong> ${fmtHa(o.luas_terserang_ha)}</div>
+          <div><strong>Tingkat:</strong> ${badgeTingkat(o.tingkat_serangan)}</div>
+          <div><strong>Status:</strong> ${badgeStatus(o.status)}</div>
+        </div>
+        <div>
+          <div class="alert alert-info"><strong>📋 Deskripsi Kejadian:</strong><br>${o.deskripsi || '-'}</div>
+          <div class="alert alert-warn" style="margin-top:8px;"><strong>⚠️ Gejala:</strong><br>${o.gejala || '-'}</div>
+          <div class="alert alert-success" style="margin-top:8px;"><strong>✅ Rekomendasi:</strong><br>${o.rekomendasi || '-'}</div>
+        </div>
+      </div>
+    `;
+    document.getElementById('btn-tl').style.display = o.status === 'baru' ? '' : 'none';
+    document.getElementById('btn-selesai').style.display = o.status !== 'selesai' ? '' : 'none';
+    document.getElementById('modal-detail').classList.add('show');
+  } catch(e) { showToast(e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+async function updateStatus(status) {
+  if (!selectedOPTId) return;
+  try {
+    await API.patch(`/api/opt/${selectedOPTId}`, { status });
+    showToast(`Status laporan diperbarui: ${status}`, 'success');
+    closeModal('modal-detail');
+    loadOPT();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function quickUpdate(id, status) {
+  try {
+    await API.patch(`/api/opt/${id}`, { status });
+    showToast('Status diperbarui.', 'success');
+    loadOPT();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+function openModalLapor() {
+  document.getElementById('modal-lapor').classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+async function submitLaporan() {
+  try {
+    await API.post('/api/opt', {
+      id_jenis_opt: +document.getElementById('l-jenis-opt').value,
+      wilayah_nama: document.getElementById('l-wilayah').value,
+      tanggal_lapor: document.getElementById('l-tanggal').value,
+      tingkat_serangan: document.getElementById('l-tingkat').value,
+      luas_terserang_ha: +document.getElementById('l-luas').value,
+      deskripsi: document.getElementById('l-deskripsi').value,
+      lat: +document.getElementById('l-lat').value,
+      lng: +document.getElementById('l-lng').value
+    });
+    showToast('Laporan OPT berhasil dikirim!', 'success');
+    closeModal('modal-lapor');
+    loadOPT();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+init();
+</script>
+</body>
+</html>
+

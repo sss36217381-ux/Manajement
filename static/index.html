@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGTEMBAKAU – Login</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .bg-pattern {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #1a4035 0%, #2d6a4f 40%, #40916c 70%, #52b788 100%);
+      overflow: hidden;
+    }
+    .bg-pattern::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.05) 1px, transparent 1px),
+                        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .login-wrapper {
+      position: relative; z-index: 1;
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .login-card { animation: fade-up 0.4s ease; }
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .sentra-list {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4px; margin-top: 8px;
+    }
+    .sentra-chip {
+      font-size: 10px; padding: 3px 8px;
+      background: rgba(64,145,108,0.1);
+      border-radius: 100px; color: #2d6a4f;
+      font-weight: 600; text-align: center;
+    }
+    .info-box {
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 8px; padding: 10px 14px;
+      margin-bottom: 16px; font-size: 12px;
+      color: #166534;
+    }
+    .demo-accounts {
+      background: #fafafa; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 10px 14px;
+      margin-top: 12px;
+    }
+    .demo-accounts h4 { font-size: 11px; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .demo-row {
+      display: flex; justify-content: space-between;
+      font-size: 11.5px; padding: 2px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .demo-row:last-child { border: none; }
+    .demo-role { font-weight: 600; color: #2d6a4f; }
+    .fill-btn {
+      cursor: pointer; color: #3b82f6;
+      font-size: 10px; text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<div class="bg-pattern"></div>
+<div class="login-wrapper">
+  <div class="login-card card" style="max-width:420px;width:100%;padding:36px;">
+    <div class="login-logo">
+      <div class="logo-icon">🌿</div>
+      <h1>SIGTEMBAKAU</h1>
+      <p>Sistem Informasi Geografis Tembakau Nasional</p>
+    </div>
+
+    <div class="info-box">
+      📍 Mencakup <strong>8 sentra tembakau</strong> nasional: Temanggung, Wonosobo, Madura, Jember, Bojonegoro, Lombok Timur, Deli Serdang, & Garut.
+    </div>
+
+    <div id="err-msg" class="alert alert-danger hidden">⚠️ <span id="err-text"></span></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label>📧 Email</label>
+        <input type="email" id="email" name="email" placeholder="email@sigtembakau.id" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>🔒 Password</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary w-full" style="justify-content:center;padding:10px;">
+        <span id="btn-text">Masuk ke Sistem</span>
+      </button>
+    </form>
+
+    <div class="demo-accounts">
+      <h4>🧪 Akun Demo (klik untuk isi otomatis)</h4>
+      <div class="demo-row">
+        <span class="demo-role">👑 Admin</span>
+        <span class="text-muted">admin@sigtembakau.id</span>
+        <span class="fill-btn" onclick="fillDemo('admin@sigtembakau.id','admin123')">Gunakan</span>
+      </div>
+      <div class="demo-row">
+        <span class="demo-role">🔧 Operator</span>
+        <span class="text-muted">operator.tmg@...</span>
+        <span class="fill-btn" onclick="fillDemo('operator.tmg@sigtembakau.id','operator123')">Gunakan</span>
+      </div>
+      <div class="demo-row">
+        <span class="demo-role">🌱 Penyuluh</span>
+        <span class="text-muted">penyuluh.tmg@...</span>
+        <span class="fill-btn" onclick="fillDemo('penyuluh.tmg@sigtembakau.id','penyuluh123')">Gunakan</span>
+      </div>
+      <div class="demo-row">
+        <span class="demo-role">👨‍🌾 Petani</span>
+        <span class="text-muted">petani.pakjo@...</span>
+        <span class="fill-btn" onclick="fillDemo('petani.pakjo@sigtembakau.id','petani123')">Gunakan</span>
+      </div>
+      <div class="demo-row">
+        <span class="demo-role">🏭 Gudang/Pabrik</span>
+        <span class="text-muted">gudang.djarum@...</span>
+        <span class="fill-btn" onclick="fillDemo('gudang.djarum@sigtembakau.id','gudang123')">Gunakan</span>
+      </div>
+    </div>
+
+    <p class="text-center text-muted mt-8" style="font-size:11px;">
+      SIGTEMBAKAU v1.0 • Prototype WebGIS Tembakau Nasional
+    </p>
+  </div>
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/utils.js"></script>
+<script>
+  // Redirect jika sudah login
+  API.get('/api/auth/me').then(d => {
+    if (d.logged_in) window.location.href = '/dashboard.html';
+  }).catch(() => {});
+
+  function fillDemo(email, pw) {
+    document.getElementById('email').value = email;
+    document.getElementById('password').value = pw;
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const btnText = document.getElementById('btn-text');
+    btn.disabled = true;
+    btnText.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Memproses...';
+
+    const err = document.getElementById('err-msg');
+    err.classList.add('hidden');
+
+    const fd = new FormData(e.target);
+    try {
+      const data = await API.post('/api/auth/login', fd, true);
+      showToast(`Selamat datang, ${data.user.nama}!`, 'success');
+      setTimeout(() => window.location.href = '/dashboard.html', 800);
+    } catch(ex) {
+      err.classList.remove('hidden');
+      document.getElementById('err-text').textContent = ex.message;
+      btn.disabled = false;
+      btnText.textContent = 'Masuk ke Sistem';
+    }
+  });
+</script>
+</body>
+</html>
+

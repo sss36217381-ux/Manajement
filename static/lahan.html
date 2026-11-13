@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Lahan – SIGTEMBAKAU</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="/dashboard.html"><span class="leaf">🌿</span>
+    <div><div>SIGTEMBAKAU</div><div class="navbar-subtitle">Data Lahan Tembakau</div></div>
+  </a>
+  <div class="navbar-spacer"></div>
+  <div class="navbar-user" onclick="doLogout()">
+    <div class="avatar" id="nav-user-avatar">A</div>
+    <div class="user-info">
+      <span id="nav-user-name">Pengguna</span>
+      <span class="user-role" id="nav-user-role">ROLE</span>
+    </div>
+    <span style="font-size:18px;opacity:0.8;">⏏</span>
+  </div>
+</nav>
+
+<nav class="sidebar">
+  <div class="sidebar-section">Menu Utama</div>
+  <a href="/dashboard.html" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+  <a href="/peta.html" class="nav-item"><span class="icon">🗺️</span> Peta WebGIS</a>
+  <a href="/lahan.html" class="nav-item active"><span class="icon">🌾</span> Data Lahan</a>
+  <a href="/harga.html" class="nav-item"><span class="icon">💰</span> Harga Tembakau</a>
+  <a href="/opt.html" class="nav-item"><span class="icon">🐛</span> Laporan OPT</a>
+  <div class="sidebar-section">Administrasi</div>
+  <a href="/admin.html" class="nav-item" id="menu-admin"><span class="icon">⚙️</span> Manajemen User</a>
+  <div class="sidebar-footer">🌿 SIGTEMBAKAU v1.0</div>
+</nav>
+
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🌾 Data Lahan Tembakau</div>
+      <div class="page-subtitle">Kelola dan verifikasi poligon lahan petani tembakau</div>
+    </div>
+    <div class="flex" style="gap:8px;">
+      <button class="btn btn-primary" onclick="openModalTambah()" id="btn-tambah-lahan">+ Tambah Lahan</button>
+      <a href="/peta.html" class="btn btn-secondary">🗺️ Lihat Peta</a>
+    </div>
+  </div>
+
+  <!-- FILTER -->
+  <div class="card mb-16" style="padding:14px 16px;">
+    <div class="flex" style="gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:130px;">
+        <label>Filter Status</label>
+        <select id="filter-status" onchange="loadLahan()">
+          <option value="">Semua Status</option>
+          <option value="terverifikasi">Terverifikasi</option>
+          <option value="diajukan">Diajukan</option>
+          <option value="ditolak">Ditolak</option>
+        </select>
+      </div>
+      <div style="flex:2;min-width:130px;">
+        <label>Filter Wilayah</label>
+        <select id="filter-wilayah" onchange="loadLahan()">
+          <option value="">Semua Wilayah</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary" onclick="loadLahan()">🔍 Cari</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;" id="lahan-stats">
+    <div class="kpi-card"><div class="kpi-icon">🌾</div><div class="kpi-value" id="stat-total">-</div><div class="kpi-label">Total Lahan</div></div>
+    <div class="kpi-card"><div class="kpi-icon">✅</div><div class="kpi-value" id="stat-verified">-</div><div class="kpi-label">Terverifikasi</div></div>
+    <div class="kpi-card warn"><div class="kpi-icon">⏳</div><div class="kpi-value" id="stat-pending">-</div><div class="kpi-label">Menunggu</div></div>
+    <div class="kpi-card"><div class="kpi-icon">📐</div><div class="kpi-value" id="stat-luas">-</div><div class="kpi-label">Total Luas</div></div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card">
+    <div class="table-wrap">
+      <table id="tbl-lahan">
+        <thead>
+          <tr>
+            <th>#</th><th>Kode Lahan</th><th>Petani</th><th>Wilayah</th>
+            <th>Luas (Ha)</th><th>Ketinggian</th><th>Tanah</th>
+            <th>Varietas</th><th>Produksi</th><th>Status</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="lahan-body">
+          <tr><td colspan="11" class="text-center text-muted">Memuat data lahan...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL: TAMBAH LAHAN -->
+<div class="modal-backdrop" id="modal-tambah">
+  <div class="modal">
+    <div class="modal-header">
+      <span>🌾 Daftarkan Lahan Baru</span>
+      <span style="cursor:pointer;font-size:20px;" onclick="closeModal('modal-tambah')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info">
+        📍 Poligon lahan direpresentasikan dalam format GeoJSON. Untuk prototype ini, koordinat contoh sudah tersedia.
+      </div>
+      <div class="form-group">
+        <label>Kode Lahan *</label>
+        <input type="text" id="f-kode" placeholder="Contoh: LHN-TMG-010" required>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>ID Petani *</label>
+          <input type="number" id="f-petani" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>ID Wilayah *</label>
+          <select id="f-wilayah"></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Luas (Ha) *</label>
+          <input type="number" id="f-luas" step="0.01" placeholder="Contoh: 1.50">
+        </div>
+        <div class="form-group">
+          <label>Ketinggian (mdpl)</label>
+          <input type="number" id="f-ketinggian" value="500" min="0" max="3000">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Jenis Tanah</label>
+          <select id="f-tanah">
+            <option>Andosol</option><option>Regosol</option><option>Aluvial</option>
+            <option>Grumosol / Mediteran</option><option>Latosol</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status Kepemilikan</label>
+          <select id="f-kepemilikan">
+            <option value="milik">Milik Sendiri</option>
+            <option value="sewa">Sewa</option>
+            <option value="bagi hasil">Bagi Hasil</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>GeoJSON Poligon *</label>
+        <textarea id="f-geom" rows="4" placeholder='{"type":"Polygon","coordinates":[[[lng,lat],[lng,lat],[lng,lat],[lng,lat]]]}'></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Centroid Latitude</label>
+          <input type="number" id="f-lat" step="0.0001" placeholder="-7.3300">
+        </div>
+        <div class="form-group">
+          <label>Centroid Longitude</label>
+          <input type="number" id="f-lng" step="0.0001" placeholder="110.1200">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-tambah')">Batal</button>
+      <button class="btn btn-primary" onclick="submitTambahLahan()">💾 Simpan Lahan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: VERIFIKASI -->
+<div class="modal-backdrop" id="modal-verify">
+  <div class="modal">
+    <div class="modal-header">
+      <span>✅ Verifikasi Lahan</span>
+      <span style="cursor:pointer;font-size:20px;" onclick="closeModal('modal-verify')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div id="verify-info" class="alert alert-info mb-16"></div>
+      <div class="form-group">
+        <label>Keputusan Verifikasi</label>
+        <select id="v-status">
+          <option value="terverifikasi">✅ Terverifikasi – Data Valid</option>
+          <option value="ditolak">❌ Ditolak – Data Tidak Valid</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Catatan Verifikasi</label>
+        <textarea id="v-catatan" placeholder="Tuliskan alasan atau catatan verifikasi..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-verify')">Batal</button>
+      <button class="btn btn-primary" onclick="submitVerifikasi()">✅ Simpan Keputusan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/static/js/utils.js"></script>
+<script>
+let currentUser, allLahan = [], wilayahList = [];
+let verifyTargetId = null;
+
+async function init() {
+  currentUser = await checkAuth();
+  if (!currentUser) return;
+  renderNavUser(currentUser);
+  if (!['admin','operator'].includes(currentUser.role)) {
+    document.getElementById('menu-admin').classList.add('hidden');
+  }
+  if (['publik','pimpinan'].includes(currentUser.role)) {
+    document.getElementById('btn-tambah-lahan').classList.add('hidden');
+  }
+  await loadWilayah();
+  await loadLahan();
+}
+
+async function loadWilayah() {
+  const data = await API.get('/api/geojson/wilayah');
+  wilayahList = data.features.map(f => f.properties);
+  const sel = document.getElementById('filter-wilayah');
+  const selF = document.getElementById('f-wilayah');
+  wilayahList.forEach(w => {
+    sel.innerHTML += `<option value="${w.id}">${w.nama}</option>`;
+    selF.innerHTML += `<option value="${w.id}">${w.nama}</option>`;
+  });
+}
+
+async function loadLahan() {
+  showLoading('Memuat data lahan...');
+  try {
+    const status = document.getElementById('filter-status').value;
+    const wilayah = document.getElementById('filter-wilayah').value;
+    let url = '/api/lahan?limit=200';
+    if (status) url += `&status=${status}`;
+    if (wilayah) url += `&id_wilayah=${wilayah}`;
+    allLahan = await API.get(url);
+    renderTable(allLahan);
+    updateStats(allLahan);
+  } catch(e) {
+    showToast('Gagal memuat lahan: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+function updateStats(data) {
+  document.getElementById('stat-total').textContent = data.length;
+  document.getElementById('stat-verified').textContent = data.filter(d => d.status_verifikasi === 'terverifikasi').length;
+  document.getElementById('stat-pending').textContent = data.filter(d => d.status_verifikasi === 'diajukan').length;
+  const totalHa = data.reduce((s, d) => s + (d.luas_ha || 0), 0);
+  document.getElementById('stat-luas').textContent = fmtHa(totalHa);
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('lahan-body');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">Tidak ada data lahan.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((l, i) => `
+    <tr>
+      <td class="text-muted">${i+1}</td>
+      <td><strong>${l.kode_lahan}</strong></td>
+      <td>${l.nama_petani}</td>
+      <td>${l.nama_wilayah}</td>
+      <td>${fmtHa(l.luas_ha)}</td>
+      <td>${l.ketinggian_mdpl} mdpl</td>
+      <td>${l.jenis_tanah || '-'}</td>
+      <td>${l.nama_varietas || '<span class="text-muted">-</span>'}</td>
+      <td>${l.jumlah_ton ? fmtTon(l.jumlah_ton) : '<span class="text-muted">-</span>'}</td>
+      <td>${badgeStatus(l.status_verifikasi)}</td>
+      <td>
+        ${['admin','operator'].includes(currentUser.role) && l.status_verifikasi === 'diajukan'
+          ? `<button class="btn btn-primary btn-sm" onclick="openVerify(${l.id_lahan},'${l.kode_lahan}')">Verifikasi</button>`
+          : ''}
+        ${currentUser.role === 'admin'
+          ? `<button class="btn btn-danger btn-sm btn-icon" onclick="hapusLahan(${l.id_lahan})" title="Hapus">🗑</button>`
+          : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openModalTambah() {
+  document.getElementById('modal-tambah').classList.add('show');
+}
+function openVerify(id, kode) {
+  verifyTargetId = id;
+  document.getElementById('verify-info').textContent = `Anda akan memverifikasi lahan: ${kode}`;
+  document.getElementById('modal-verify').classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+async function submitTambahLahan() {
+  const geomStr = document.getElementById('f-geom').value.trim();
+  if (!geomStr) { showToast('GeoJSON poligon wajib diisi.', 'error'); return; }
+  try {
+    JSON.parse(geomStr); // validate JSON
+  } catch { showToast('GeoJSON tidak valid.', 'error'); return; }
+
+  try {
+    await API.post('/api/lahan', {
+      id_petani: +document.getElementById('f-petani').value,
+      id_wilayah: +document.getElementById('f-wilayah').value,
+      kode_lahan: document.getElementById('f-kode').value,
+      luas_ha: +document.getElementById('f-luas').value,
+      ketinggian_mdpl: +document.getElementById('f-ketinggian').value,
+      jenis_tanah: document.getElementById('f-tanah').value,
+      status_kepemilikan: document.getElementById('f-kepemilikan').value,
+      geom_geojson: geomStr,
+      centroid_lat: +document.getElementById('f-lat').value || null,
+      centroid_lng: +document.getElementById('f-lng').value || null
+    });
+    showToast('Lahan berhasil didaftarkan!', 'success');
+    closeModal('modal-tambah');
+    loadLahan();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+async function submitVerifikasi() {
+  if (!verifyTargetId) return;
+  try {
+    await API.patch(`/api/lahan/${verifyTargetId}/verifikasi`, {
+      status_verifikasi: document.getElementById('v-status').value,
+      catatan_verifikasi: document.getElementById('v-catatan').value
+    });
+    showToast('Verifikasi berhasil disimpan.', 'success');
+    closeModal('modal-verify');
+    loadLahan();
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+async function hapusLahan(id) {
+  if (!confirm(`Yakin hapus lahan #${id}? Aksi ini tidak dapat dibatalkan.`)) return;
+  try {
+    await API.del(`/api/lahan/${id}`);
+    showToast('Lahan berhasil dihapus.', 'success');
+    loadLahan();
+  } catch(e) { showToast('Gagal hapus: ' + e.message, 'error'); }
+}
+
+init();
+</script>
+</body>
+</html>
+

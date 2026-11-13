@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harga Tembakau – SIGTEMBAKAU</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="/dashboard.html"><span class="leaf">🌿</span>
+    <div><div>SIGTEMBAKAU</div><div class="navbar-subtitle">Monitoring Harga Tembakau</div></div>
+  </a>
+  <div class="navbar-spacer"></div>
+  <div class="navbar-user" onclick="doLogout()">
+    <div class="avatar" id="nav-user-avatar">A</div>
+    <div class="user-info">
+      <span id="nav-user-name">Pengguna</span>
+      <span class="user-role" id="nav-user-role">ROLE</span>
+    </div>
+    <span style="font-size:18px;opacity:0.8;">⏏</span>
+  </div>
+</nav>
+
+<nav class="sidebar">
+  <div class="sidebar-section">Menu Utama</div>
+  <a href="/dashboard.html" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+  <a href="/peta.html" class="nav-item"><span class="icon">🗺️</span> Peta WebGIS</a>
+  <a href="/lahan.html" class="nav-item"><span class="icon">🌾</span> Data Lahan</a>
+  <a href="/harga.html" class="nav-item active"><span class="icon">💰</span> Harga Tembakau</a>
+  <a href="/opt.html" class="nav-item"><span class="icon">🐛</span> Laporan OPT</a>
+  <div class="sidebar-section">Administrasi</div>
+  <a href="/admin.html" class="nav-item" id="menu-admin"><span class="icon">⚙️</span> Manajemen User</a>
+  <div class="sidebar-footer">🌿 SIGTEMBAKAU v1.0</div>
+</nav>
+
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <div class="page-title">💰 Monitoring Harga Tembakau</div>
+      <div class="page-subtitle">Harga harian per gudang, varietas, dan grade mutu</div>
+    </div>
+    <button class="btn btn-primary" id="btn-input-harga" onclick="openModalHarga()">+ Input Harga</button>
+  </div>
+
+  <!-- HARGA TERTINGGI HARI INI -->
+  <div id="harga-highlight" class="kpi-grid" style="margin-bottom:20px;">
+    <div class="kpi-card"><div class="kpi-value">...</div><div class="kpi-label">Memuat harga...</div></div>
+  </div>
+
+  <!-- GRAFIK TREN -->
+  <div class="card mb-16">
+    <div class="flex-between mb-16">
+      <div class="card-title">📈 Tren Harga (30 Hari) – Grade A</div>
+      <div class="flex" style="gap:8px;">
+        <select id="sel-varietas" onchange="loadTren()" style="width:auto;padding:6px 10px;">
+          <option value="1">Kemloko/Srintil (Temanggung)</option>
+          <option value="3">Madura Prancak</option>
+          <option value="2">Virginia Lombok FC</option>
+          <option value="4">Na-Oogst Besuki</option>
+          <option value="5">Virginia Bojonegoro</option>
+          <option value="6">Deli White Burley</option>
+          <option value="7">Tembakau Mole Garut</option>
+        </select>
+        <select id="sel-grade" onchange="loadTren()" style="width:auto;padding:6px 10px;">
+          <option value="A">Grade A</option>
+          <option value="B">Grade B</option>
+          <option value="C">Grade C</option>
+        </select>
+      </div>
+    </div>
+    <canvas id="chart-tren-harga" height="200"></canvas>
+  </div>
+
+  <!-- FILTER & TABLE HARGA -->
+  <div class="card mb-16" style="padding:14px;">
+    <div class="flex" style="gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
+      <div style="flex:2;">
+        <label>Gudang / Pabrik</label>
+        <select id="f-gudang" onchange="loadHarga()">
+          <option value="">Semua Gudang</option>
+        </select>
+      </div>
+      <div style="flex:2;">
+        <label>Varietas</label>
+        <select id="f-varietas" onchange="loadHarga()">
+          <option value="">Semua Varietas</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label>Grade</label>
+        <select id="f-grade" onchange="loadHarga()">
+          <option value="">Semua Grade</option>
+          <option value="A">A</option><option value="B">B</option>
+          <option value="C">C</option><option value="D">D</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary" onclick="loadHarga()">🔍</button>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl-harga">
+        <thead>
+          <tr>
+            <th>Tanggal</th><th>Gudang</th><th>Wilayah</th>
+            <th>Varietas</th><th>Tipe</th><th>Grade</th>
+            <th class="text-right">Harga/kg</th><th>Catatan</th>
+          </tr>
+        </thead>
+        <tbody id="harga-body">
+          <tr><td colspan="8" class="text-center text-muted">Memuat data harga...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HARGA TERAKHIR PER GUDANG -->
+  <div class="card">
+    <div class="card-title">🏷️ Rekapitulasi Harga Terakhir Grade A – Per Gudang</div>
+    <div style="margin-top:8px;" id="rekap-harga-grid"></div>
+  </div>
+</main>
+
+<!-- MODAL INPUT HARGA -->
+<div class="modal-backdrop" id="modal-harga">
+  <div class="modal">
+    <div class="modal-header">
+      <span>💰 Input Harga Tembakau Harian</span>
+      <span style="cursor:pointer;font-size:20px;" onclick="closeModal('modal-harga')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Gudang / Pabrik *</label>
+          <select id="h-gudang"></select>
+        </div>
+        <div class="form-group">
+          <label>Varietas *</label>
+          <select id="h-varietas"></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Tanggal *</label>
+          <input type="date" id="h-tanggal">
+        </div>
+        <div class="form-group">
+          <label>Grade Mutu *</label>
+          <select id="h-grade">
+            <option value="A">Grade A – Kualitas Super</option>
+            <option value="B">Grade B – Kualitas Sedang</option>
+            <option value="C">Grade C – Kualitas Dasar</option>
+            <option value="D">Grade D – Sortir Bawah</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Harga per Kg (Rp) *</label>
+        <input type="number" id="h-harga" placeholder="Contoh: 185000" min="1000" max="1000000">
+      </div>
+      <div class="form-group">
+        <label>Catatan</label>
+        <textarea id="h-catatan" placeholder="Kondisi pasar, alasan kenaikan/penurunan harga..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-harga')">Batal</button>
+      <button class="btn btn-primary" onclick="submitHarga()">💾 Simpan Harga</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/static/js/utils.js"></script>
+<script>
+let currentUser, chartTren;
+
+async function init() {
+  currentUser = await checkAuth();
+  if (!currentUser) return;
+  renderNavUser(currentUser);
+  if (!['admin','operator','gudang'].includes(currentUser.role)) {
+    document.getElementById('btn-input-harga').classList.add('hidden');
+  }
+  if (!['admin'].includes(currentUser.role)) {
+    document.getElementById('menu-admin').classList.add('hidden');
+  }
+
+  // Set default tanggal hari ini
+  document.getElementById('h-tanggal').value = new Date().toISOString().split('T')[0];
+
+  await Promise.all([loadMasterData(), loadHighlight(), loadTren(), loadHarga(), loadRekap()]);
+}
+
+async function loadMasterData() {
+  const [gudangs, varitas] = await Promise.all([
+    API.get('/api/harga/gudang-list'),
+    API.get('/api/harga/varietas-list')
+  ]);
+  const fGudang = document.getElementById('f-gudang');
+  const hGudang = document.getElementById('h-gudang');
+  gudangs.forEach(g => {
+    const opt = `<option value="${g.id_gudang}">${g.nama_gudang} (${g.nama_wilayah})</option>`;
+    fGudang.innerHTML += opt; hGudang.innerHTML += opt;
+  });
+  const fVar = document.getElementById('f-varietas');
+  const hVar = document.getElementById('h-varietas');
+  varitas.forEach(v => {
+    const opt = `<option value="${v.id_varietas}">${v.nama_varietas}</option>`;
+    fVar.innerHTML += opt; hVar.innerHTML += opt;
+  });
+}
+
+async function loadHighlight() {
+  const data = await API.get('/api/harga/terakhir');
+  const gradeA = data.filter(h => h.grade_mutu === 'A').slice(0, 6);
+  document.getElementById('harga-highlight').innerHTML = gradeA.map(h => `
+    <div class="kpi-card gold">
+      <div class="kpi-icon">🌿</div>
+      <div class="kpi-value" style="font-size:20px;">${fmtRp(h.harga_per_kg)}/kg</div>
+      <div class="kpi-label">${h.nama_varietas} – ${h.nama_gudang.substring(0, 30)}</div>
+      <div class="kpi-label text-muted">${h.nama_wilayah} • Grade A • ${fmtDate(h.tanggal)}</div>
+    </div>
+  `).join('') || '<div class="kpi-card"><div class="kpi-value">-</div><div class="kpi-label">Belum ada data harga</div></div>';
+}
+
+async function loadTren() {
+  const varId = document.getElementById('sel-varietas').value;
+  const grade = document.getElementById('sel-grade').value;
+  const data = await API.get(`/api/dashboard/tren-harga?id_varietas=${varId}&grade=${grade}`);
+  if (chartTren) chartTren.destroy();
+  const ctx = document.getElementById('chart-tren-harga').getContext('2d');
+  chartTren = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => fmtDate(d.tanggal)),
+      datasets: [
+        {
+          label: 'Harga Rata-rata',
+          data: data.map(d => d.rata_harga),
+          borderColor: '#2d6a4f', backgroundColor: 'rgba(45,106,79,0.1)',
+          tension: 0.4, fill: true, pointRadius: 5, pointBackgroundColor: '#2d6a4f'
+        },
+        {
+          label: 'Harga Tertinggi',
+          data: data.map(d => d.max_harga),
+          borderColor: '#e9c46a', borderDash: [5,3],
+          pointRadius: 3, tension: 0.3, fill: false
+        },
+        {
+          label: 'Harga Terendah',
+          data: data.map(d => d.min_harga),
+          borderColor: '#ef4444', borderDash: [5,3],
+          pointRadius: 3, tension: 0.3, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: { y: { ticks: { callback: v => 'Rp ' + v.toLocaleString('id-ID') } } }
+    }
+  });
+}
+
+async function loadHarga() {
+  showLoading('Memuat data harga...');
+  try {
+    let url = '/api/harga?limit=100';
+    const g = document.getElementById('f-gudang').value;
+    const v = document.getElementById('f-varietas').value;
+    const gr = document.getElementById('f-grade').value;
+    if (g) url += `&id_gudang=${g}`;
+    if (v) url += `&id_varietas=${v}`;
+    if (gr) url += `&grade_mutu=${gr}`;
+    const data = await API.get(url);
+    const tbody = document.getElementById('harga-body');
+    tbody.innerHTML = data.map(h => `
+      <tr>
+        <td>${fmtDate(h.tanggal)}</td>
+        <td><strong>${h.nama_gudang}</strong></td>
+        <td>${h.nama_wilayah}</td>
+        <td>${h.nama_varietas}</td>
+        <td>${h.tipe}</td>
+        <td>${badgeGrade(h.grade_mutu)}</td>
+        <td class="text-right text-bold text-success">${fmtRp(h.harga_per_kg)}</td>
+        <td class="text-muted" style="font-size:11px;">${h.catatan || '-'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" class="text-center text-muted">Tidak ada data.</td></tr>';
+  } finally { hideLoading(); }
+}
+
+async function loadRekap() {
+  const data = await API.get('/api/harga/terakhir');
+  // Group by wilayah
+  const byWilayah = {};
+  data.filter(h => h.grade_mutu === 'A').forEach(h => {
+    if (!byWilayah[h.nama_wilayah]) byWilayah[h.nama_wilayah] = [];
+    byWilayah[h.nama_wilayah].push(h);
+  });
+  let html = '';
+  for (const [wil, items] of Object.entries(byWilayah)) {
+    html += `<div style="margin-bottom:12px;"><strong>📍 ${wil}</strong><div class="table-wrap" style="margin-top:6px;"><table>
+      <thead><tr><th>Gudang</th><th>Varietas</th><th class="text-right">Grade A</th><th>Update</th></tr></thead>
+      <tbody>${items.map(h => `
+        <tr>
+          <td>${h.nama_gudang}</td>
+          <td>${h.nama_varietas}</td>
+          <td class="text-right text-bold text-success">${fmtRp(h.harga_per_kg)}/kg</td>
+          <td class="text-muted">${fmtDate(h.tanggal)}</td>
+        </tr>
+      `).join('')}</tbody>
+    </table></div></div>`;
+  }
+  document.getElementById('rekap-harga-grid').innerHTML = html || '<p class="text-muted">Belum ada data harga.</p>';
+}
+
+function openModalHarga() {
+  document.getElementById('modal-harga').classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+async function submitHarga() {
+  try {
+    await API.post('/api/harga', {
+      id_gudang: +document.getElementById('h-gudang').value,
+      id_varietas: +document.getElementById('h-varietas').value,
+      tanggal: document.getElementById('h-tanggal').value,
+      grade_mutu: document.getElementById('h-grade').value,
+      harga_per_kg: +document.getElementById('h-harga').value,
+      catatan: document.getElementById('h-catatan').value
+    });
+    showToast('Harga berhasil disimpan!', 'success');
+    closeModal('modal-harga');
+    await Promise.all([loadHighlight(), loadTren(), loadHarga(), loadRekap()]);
+  } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+}
+
+init();
+</script>
+</body>
+</html>
+

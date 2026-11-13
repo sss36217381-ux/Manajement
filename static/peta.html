@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peta WebGIS – SIGTEMBAKAU</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .main-content.fullscreen { padding: 0; overflow: hidden; }
+    #map { height: calc(100vh - 60px); }
+    .map-container { position: relative; }
+    .popup-card { min-width: 220px; max-width: 280px; font-size: 12.5px; }
+    .popup-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #2d6a4f; }
+    .popup-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #f1f5f9; }
+    .popup-row:last-child { border: none; }
+    .popup-label { color: #64748b; font-weight: 600; }
+    .popup-val { text-align: right; font-weight: 500; }
+    .popup-foto { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 8px; }
+    .search-box {
+      position: absolute; top: 10px; left: 210px;
+      z-index: 900; display: flex; gap: 6px;
+    }
+    .search-box input {
+      width: 200px; padding: 7px 12px;
+      border-radius: 8px; border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a class="navbar-brand" href="/dashboard.html">
+    <span class="leaf">🌿</span>
+    <div>
+      <div>SIGTEMBAKAU</div>
+      <div class="navbar-subtitle">Peta WebGIS Tembakau</div>
+    </div>
+  </a>
+  <div class="navbar-spacer"></div>
+  <div class="navbar-user" onclick="doLogout()">
+    <div class="avatar" id="nav-user-avatar">A</div>
+    <div class="user-info">
+      <span id="nav-user-name">Pengguna</span>
+      <span class="user-role" id="nav-user-role">ROLE</span>
+    </div>
+    <span title="Logout" style="font-size:18px;opacity:0.8;">⏏</span>
+  </div>
+</nav>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-section">Menu Utama</div>
+  <a href="/dashboard.html" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+  <a href="/peta.html" class="nav-item active"><span class="icon">🗺️</span> Peta WebGIS</a>
+  <a href="/lahan.html" class="nav-item"><span class="icon">🌾</span> Data Lahan</a>
+  <a href="/harga.html" class="nav-item"><span class="icon">💰</span> Harga Tembakau</a>
+  <a href="/opt.html" class="nav-item"><span class="icon">🐛</span> Laporan OPT</a>
+  <div class="sidebar-section">Administrasi</div>
+  <a href="/admin.html" class="nav-item" id="menu-admin"><span class="icon">⚙️</span> Manajemen User</a>
+  <div class="sidebar-footer">🌿 SIGTEMBAKAU v1.0</div>
+</nav>
+
+<!-- MAP -->
+<main class="main-content fullscreen">
+  <div class="map-container" style="position:relative;">
+
+    <!-- Layer Control -->
+    <div class="layer-control">
+      <div class="layer-control-title">🗂 Layer Peta</div>
+      <label class="layer-item">
+        <input type="checkbox" id="lyr-wilayah" checked>
+        <span>🗺 Batas Wilayah Sentra</span>
+      </label>
+      <label class="layer-item">
+        <input type="checkbox" id="lyr-lahan" checked>
+        <span>🌾 Poligon Lahan</span>
+      </label>
+      <label class="layer-item">
+        <input type="checkbox" id="lyr-gudang" checked>
+        <span>🏭 Gudang & Pabrik</span>
+      </label>
+      <label class="layer-item">
+        <input type="checkbox" id="lyr-opt" checked>
+        <span>🐛 Titik OPT</span>
+      </label>
+      <hr style="margin:8px 0;border-color:#e2e8f0;">
+      <div class="layer-control-title">🗺 Basemap</div>
+      <label class="layer-item"><input type="radio" name="basemap" value="osm" checked> OpenStreetMap</label>
+      <label class="layer-item"><input type="radio" name="basemap" value="sat"> Citra Satelit</label>
+      <label class="layer-item"><input type="radio" name="basemap" value="topo"> Topografi</label>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend" style="min-width:170px;">
+      <div class="legend-title">🌿 Status Lahan</div>
+      <div class="legend-item"><div class="legend-box" style="background:#22c55e;"></div> Terverifikasi</div>
+      <div class="legend-item"><div class="legend-box" style="background:#f59e0b;"></div> Diajukan / Proses</div>
+      <div class="legend-item"><div class="legend-box" style="background:#ef4444;"></div> Ditolak</div>
+      <hr style="margin:6px 0;">
+      <div class="legend-title">🐛 Tingkat OPT</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fef08a;border:1px solid #999;"></div> Ringan</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fb923c;"></div> Sedang</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#dc2626;"></div> Berat</div>
+      <hr style="margin:6px 0;">
+      <div class="legend-title">🏭 Gudang</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8;"></div> Pabrik Rokok</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7c3aed;"></div> Koperasi / Pasar</div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="map-sidebar" id="info-panel" style="display:none;">
+      <div class="map-sidebar-header">
+        <span id="info-panel-title">Detail</span>
+        <span style="cursor:pointer;font-size:18px;" onclick="document.getElementById('info-panel').style.display='none'">✕</span>
+      </div>
+      <div class="map-sidebar-content" id="info-panel-body"></div>
+    </div>
+
+    <div id="map"></div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+<script src="/static/js/utils.js"></script>
+<script>
+let currentUser, map;
+let layers = { wilayah: null, lahan: null, gudang: null, opt: null };
+let basemaps = {};
+
+async function init() {
+  currentUser = await checkAuth();
+  if (!currentUser) return;
+  renderNavUser(currentUser);
+  if (!['admin'].includes(currentUser.role)) {
+    document.getElementById('menu-admin').classList.add('hidden');
+  }
+  initMap();
+}
+
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([-2.5, 117.0], 5);
+
+  // Basemaps
+  basemaps.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  });
+  basemaps.sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '© Esri World Imagery', maxZoom: 19
+  });
+  basemaps.topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenTopoMap', maxZoom: 17
+  });
+  basemaps.osm.addTo(map);
+
+  // Basemap switcher
+  document.querySelectorAll('input[name="basemap"]').forEach(r => {
+    r.addEventListener('change', () => {
+      Object.values(basemaps).forEach(b => map.removeLayer(b));
+      basemaps[r.value].addTo(map);
+    });
+  });
+
+  // Layer toggles
+  ['wilayah','lahan','gudang','opt'].forEach(name => {
+    document.getElementById('lyr-' + name).addEventListener('change', function() {
+      if (layers[name]) {
+        if (this.checked) map.addLayer(layers[name]);
+        else map.removeLayer(layers[name]);
+      }
+    });
+  });
+
+  loadAllLayers();
+}
+
+async function loadAllLayers() {
+  showLoading('Memuat layer peta...');
+  try {
+    await Promise.all([
+      loadLayerWilayah(),
+      loadLayerLahan(),
+      loadLayerGudang(),
+      loadLayerOPT()
+    ]);
+  } catch(e) {
+    showToast('Gagal memuat layer: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function loadLayerWilayah() {
+  const gj = await API.get('/api/geojson/wilayah');
+  if (layers.wilayah) map.removeLayer(layers.wilayah);
+  layers.wilayah = L.geoJSON(gj, {
+    style: f => ({
+      fillColor: choroplethColor(f.properties.total_produksi_ton),
+      fillOpacity: 0.35, color: '#2d6a4f', weight: 2.5
+    }),
+    onEachFeature: (f, layer) => {
+      const p = f.properties;
+      layer.bindTooltip(`<strong>${p.nama}</strong><br>${p.total_produksi_ton} ton`, { sticky: true });
+      layer.on('click', () => showWilayahInfo(p));
+    }
+  }).addTo(map);
+}
+
+function choroplethColor(ton) {
+  return ton > 8 ? '#1b4332' :
+         ton > 5 ? '#2d6a4f' :
+         ton > 3 ? '#40916c' :
+         ton > 1 ? '#74c69d' :
+         ton > 0 ? '#b7e4c7' : '#e9ecef';
+}
+
+async function loadLayerLahan() {
+  const gj = await API.get('/api/geojson/lahan');
+  if (layers.lahan) map.removeLayer(layers.lahan);
+  layers.lahan = L.geoJSON(gj, {
+    style: f => ({
+      fillColor: f.properties.color,
+      fillOpacity: 0.55, color: '#1e293b', weight: 1.5
+    }),
+    onEachFeature: (f, layer) => {
+      const p = f.properties;
+      layer.bindTooltip(`🌾 ${p.kode} – ${p.petani}<br>${fmtHa(p.luas_ha)}`, { sticky: true });
+      layer.on('click', () => showLahanInfo(p));
+    }
+  }).addTo(map);
+}
+
+async function loadLayerGudang() {
+  const gj = await API.get('/api/geojson/gudang');
+  if (layers.gudang) map.removeLayer(layers.gudang);
+  layers.gudang = L.geoJSON(gj, {
+    pointToLayer: (f, latlng) => {
+      const jenis = f.properties.jenis;
+      const color = jenis === 'pabrik rokok' ? '#1d4ed8' :
+                    jenis === 'koperasi' ? '#7c3aed' :
+                    jenis === 'pengepul' ? '#d97706' : '#64748b';
+      return L.circleMarker(latlng, {
+        radius: 9, fillColor: color, color: 'white',
+        weight: 2, fillOpacity: 0.9
+      });
+    },
+    onEachFeature: (f, layer) => {
+      const p = f.properties;
+      layer.bindTooltip(`${p.icon} <strong>${p.nama}</strong>`, { sticky: true });
+      layer.on('click', () => showGudangInfo(p));
+    }
+  }).addTo(map);
+}
+
+async function loadLayerOPT() {
+  const gj = await API.get('/api/geojson/opt');
+  if (layers.opt) map.removeLayer(layers.opt);
+  layers.opt = L.geoJSON(gj, {
+    pointToLayer: (f, latlng) => {
+      return L.circleMarker(latlng, {
+        radius: 10,
+        fillColor: f.properties.serangan_color,
+        color: '#991b1b', weight: 2, fillOpacity: 0.85
+      });
+    },
+    onEachFeature: (f, layer) => {
+      const p = f.properties;
+      layer.bindTooltip(`🐛 ${p.nama_opt}<br>${p.tingkat_serangan}`, { sticky: true });
+      layer.on('click', () => showOPTInfo(p));
+    }
+  }).addTo(map);
+}
+
+function showPanel(title, html) {
+  document.getElementById('info-panel-title').textContent = title;
+  document.getElementById('info-panel-body').innerHTML = html;
+  document.getElementById('info-panel').style.display = 'block';
+}
+
+function showWilayahInfo(p) {
+  showPanel('🗺 ' + p.nama, `
+    <div class="popup-card">
+      <div class="popup-row"><span class="popup-label">Luas Potensi</span><span class="popup-val">${fmtHa(p.luas_potensi_ha)}</span></div>
+      <div class="popup-row"><span class="popup-label">Lahan Aktif</span><span class="popup-val">${p.jumlah_lahan} petak / ${fmtHa(p.total_lahan_ha)}</span></div>
+      <div class="popup-row"><span class="popup-label">Produksi ${new Date().getFullYear()}</span><span class="popup-val text-bold text-success">${fmtTon(p.total_produksi_ton)}</span></div>
+    </div>
+  `);
+}
+
+function showLahanInfo(p) {
+  showPanel('🌾 Lahan ' + p.kode, `
+    <div class="popup-card">
+      <div class="popup-row"><span class="popup-label">Petani</span><span class="popup-val">${p.petani}</span></div>
+      <div class="popup-row"><span class="popup-label">Wilayah</span><span class="popup-val">${p.wilayah}</span></div>
+      <div class="popup-row"><span class="popup-label">Luas</span><span class="popup-val">${fmtHa(p.luas_ha)}</span></div>
+      <div class="popup-row"><span class="popup-label">Ketinggian</span><span class="popup-val">${p.ketinggian_mdpl} mdpl</span></div>
+      <div class="popup-row"><span class="popup-label">Tanah</span><span class="popup-val">${p.jenis_tanah || '-'}</span></div>
+      <div class="popup-row"><span class="popup-label">Status</span><span class="popup-val">${badgeStatus(p.status)}</span></div>
+      <div class="popup-row"><span class="popup-label">Varietas</span><span class="popup-val">${p.varietas || '-'}</span></div>
+      <div class="popup-row"><span class="popup-label">Produksi</span><span class="popup-val">${p.produksi_ton ? fmtTon(p.produksi_ton) : '-'}</span></div>
+      <div class="popup-row"><span class="popup-label">Produktivitas</span><span class="popup-val">${p.produktivitas ? p.produktivitas + ' ton/ha' : '-'}</span></div>
+      <div class="popup-row"><span class="popup-label">Grade Mutu</span><span class="popup-val">${p.grade_mutu ? badgeGrade(p.grade_mutu) : '-'}</span></div>
+    </div>
+  `);
+}
+
+function showGudangInfo(p) {
+  showPanel(p.icon + ' ' + p.nama, `
+    <div class="popup-card">
+      <div class="popup-row"><span class="popup-label">Jenis</span><span class="popup-val">${p.jenis}</span></div>
+      <div class="popup-row"><span class="popup-label">Wilayah</span><span class="popup-val">${p.wilayah}</span></div>
+      <div class="popup-row"><span class="popup-label">Kapasitas</span><span class="popup-val">${fmtTon(p.kapasitas_ton)}</span></div>
+      <div class="popup-row"><span class="popup-label">Harga Grade A</span><span class="popup-val text-bold text-success">${fmtRp(p.harga_terakhir_A)}/kg</span></div>
+      <div class="popup-row"><span class="popup-label">Update Harga</span><span class="popup-val">${fmtDate(p.tgl_update_harga)}</span></div>
+      <div class="popup-row"><span class="popup-label">Alamat</span><span class="popup-val" style="text-align:right;font-size:11px;">${p.alamat || '-'}</span></div>
+      <div class="popup-row"><span class="popup-label">Kontak</span><span class="popup-val">${p.kontak || '-'}</span></div>
+    </div>
+  `);
+}
+
+function showOPTInfo(p) {
+  showPanel('🐛 ' + p.nama_opt, `
+    <div class="popup-card">
+      ${p.foto_url ? `<img class="popup-foto" src="${p.foto_url}" alt="foto OPT">` : ''}
+      <div class="popup-row"><span class="popup-label">Kategori</span><span class="popup-val">${p.kategori}</span></div>
+      <div class="popup-row"><span class="popup-label">Wilayah</span><span class="popup-val">${p.wilayah_nama || '-'}</span></div>
+      <div class="popup-row"><span class="popup-label">Pelapor</span><span class="popup-val">${p.pelapor}</span></div>
+      <div class="popup-row"><span class="popup-label">Tanggal</span><span class="popup-val">${fmtDate(p.tanggal)}</span></div>
+      <div class="popup-row"><span class="popup-label">Tingkat</span><span class="popup-val">${badgeTingkat(p.tingkat_serangan)}</span></div>
+      <div class="popup-row"><span class="popup-label">Luas Serangan</span><span class="popup-val">${fmtHa(p.luas_terserang_ha)}</span></div>
+      <div class="popup-row"><span class="popup-label">Status</span><span class="popup-val">${badgeStatus(p.status)}</span></div>
+      <div style="margin-top:8px;padding:8px;background:#fef3c7;border-radius:6px;font-size:11.5px;">
+        <strong>📋 Deskripsi:</strong><br>${p.deskripsi || '-'}
+      </div>
+    </div>
+  `);
+}
+
+init();
+</script>
+</body>
+</html>
+

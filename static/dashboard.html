@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard – SIGTEMBAKAU</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a class="navbar-brand" href="/dashboard.html">
+    <span class="leaf">🌿</span>
+    <div>
+      <div>SIGTEMBAKAU</div>
+      <div class="navbar-subtitle">Sistem Informasi Geografis Tembakau</div>
+    </div>
+  </a>
+  <div class="navbar-spacer"></div>
+  <div class="navbar-user" onclick="doLogout()">
+    <div class="avatar" id="nav-user-avatar">A</div>
+    <div class="user-info">
+      <span id="nav-user-name">Pengguna</span>
+      <span class="user-role" id="nav-user-role">ROLE</span>
+    </div>
+    <span title="Logout" style="font-size:18px;opacity:0.8;">⏏</span>
+  </div>
+</nav>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-section">Menu Utama</div>
+  <a href="/dashboard.html" class="nav-item active"><span class="icon">📊</span> Dashboard</a>
+  <a href="/peta.html" class="nav-item"><span class="icon">🗺️</span> Peta WebGIS</a>
+  <a href="/lahan.html" class="nav-item"><span class="icon">🌾</span> Data Lahan</a>
+  <a href="/harga.html" class="nav-item"><span class="icon">💰</span> Harga Tembakau</a>
+  <a href="/opt.html" class="nav-item"><span class="icon">🐛</span> Laporan OPT</a>
+
+  <div class="sidebar-section">Administrasi</div>
+  <a href="/admin.html" class="nav-item" id="menu-admin"><span class="icon">⚙️</span> Manajemen User</a>
+
+  <div class="sidebar-footer">
+    🌿 SIGTEMBAKAU v1.0<br>
+    Prototype WebGIS Tembakau<br>
+    <span id="footer-date"></span>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📊 Dashboard Utama</div>
+      <div class="page-subtitle" id="user-greeting">Selamat datang di SIGTEMBAKAU</div>
+    </div>
+    <button class="btn btn-secondary" onclick="loadDashboard()">🔄 Perbarui</button>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">⏳</div><div class="kpi-value">...</div><div class="kpi-label">Memuat data...</div></div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="card-title">📦 Produksi Tembakau per Wilayah Sentra (Ton)</div>
+      <canvas id="chart-produksi" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">🌿 Distribusi per Varietas</div>
+      <canvas id="chart-varietas" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="grid-2" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="card-title">💰 Tren Harga Tembakau Kemloko/Srintil Grade A (30 Hari)</div>
+      <canvas id="chart-harga" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">🐛 Rekap OPT – Kategori & Status</div>
+      <canvas id="chart-opt" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- TABLE: LAHAN DIAJUKAN -->
+  <div class="card mb-16">
+    <div class="flex-between mb-16">
+      <div class="card-title">⏳ Lahan Menunggu Verifikasi</div>
+      <a href="/lahan.html" class="btn btn-primary btn-sm">Kelola Lahan →</a>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl-diajukan">
+        <thead>
+          <tr>
+            <th>Kode Lahan</th><th>Petani</th><th>Wilayah</th>
+            <th>Luas (Ha)</th><th>Kepemilikan</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="6" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TABLE: OPT AKTIF -->
+  <div class="card">
+    <div class="flex-between mb-16">
+      <div class="card-title">🚨 Laporan OPT Aktif (Baru & Ditindaklanjuti)</div>
+      <a href="/opt.html" class="btn btn-warn btn-sm">Lihat Semua OPT →</a>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl-opt">
+        <thead>
+          <tr>
+            <th>OPT</th><th>Kategori</th><th>Wilayah</th>
+            <th>Tgl Lapor</th><th>Tingkat</th><th>Luas (Ha)</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="7" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+<script src="/static/js/utils.js"></script>
+<script>
+let currentUser = null;
+let chartProduksi, chartVarietas, chartHarga, chartOPT;
+
+async function init() {
+  currentUser = await checkAuth();
+  if (!currentUser) return;
+  renderNavUser(currentUser);
+  document.getElementById('user-greeting').textContent =
+    `Selamat datang, ${currentUser.nama} 👋  |  Role: ${currentUser.role}`;
+  document.getElementById('footer-date').textContent =
+    new Date().toLocaleDateString('id-ID', {weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  // Hide admin menu for non-admin
+  if (!['admin'].includes(currentUser.role)) {
+    document.getElementById('menu-admin').classList.add('hidden');
+  }
+
+  await loadDashboard();
+}
+
+async function loadDashboard() {
+  showLoading('Memuat dashboard...');
+  try {
+    const [ringkasan, perWilayah, perVarietas, trendHarga, optRekap, lahanDiajukan, optAktif] = await Promise.all([
+      API.get('/api/dashboard/ringkasan'),
+      API.get('/api/dashboard/produksi-per-wilayah'),
+      API.get('/api/dashboard/produksi-per-varietas'),
+      API.get('/api/dashboard/tren-harga?id_varietas=1&grade=A'),
+      API.get('/api/dashboard/opt-rekap'),
+      API.get('/api/lahan?status=diajukan&limit=10'),
+      API.get('/api/opt?status=baru&limit=10')
+    ]);
+
+    renderKPI(ringkasan);
+    renderChartProduksi(perWilayah);
+    renderChartVarietas(perVarietas);
+    renderChartHarga(trendHarga);
+    renderChartOPT(optRekap);
+    renderLahanDiajukan(lahanDiajukan);
+    renderOPTAktif(optAktif);
+  } catch(e) {
+    showToast('Gagal memuat dashboard: ' + e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderKPI(d) {
+  const kpiHarga = d.harga_tertinggi;
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">🌾</div>
+      <div class="kpi-value">${fmtNum(d.total_lahan_petak)}</div>
+      <div class="kpi-label">Petak Lahan Terverifikasi</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📐</div>
+      <div class="kpi-value">${fmtHa(d.total_lahan_ha)}</div>
+      <div class="kpi-label">Total Luas Lahan Aktif</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-value">${fmtTon(d.total_produksi_ton)}</div>
+      <div class="kpi-label">Produksi ${new Date().getFullYear()}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-value">${d.rata_produktivitas.toFixed(2)}</div>
+      <div class="kpi-label">Ton/Ha Rata-rata Produktivitas</div>
+    </div>
+    <div class="kpi-card brown">
+      <div class="kpi-icon">👨‍🌾</div>
+      <div class="kpi-value">${fmtNum(d.total_petani)}</div>
+      <div class="kpi-label">Petani Terdaftar</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🏭</div>
+      <div class="kpi-value">${fmtNum(d.total_gudang)}</div>
+      <div class="kpi-label">Gudang & Pabrik</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-value">${kpiHarga ? fmtRp(kpiHarga.harga_per_kg) : '-'}/kg</div>
+      <div class="kpi-label">Harga Tertinggi – ${kpiHarga ? kpiHarga.nama_varietas : '-'} Grade A</div>
+    </div>
+    <div class="kpi-card${d.opt_aktif > 0 ? ' danger' : ''}">
+      <div class="kpi-icon">🐛</div>
+      <div class="kpi-value">${fmtNum(d.opt_aktif)}</div>
+      <div class="kpi-label">Laporan OPT Aktif</div>
+    </div>
+    <div class="kpi-card${d.lahan_diajukan > 0 ? ' warn' : ''}">
+      <div class="kpi-icon">⏳</div>
+      <div class="kpi-value">${fmtNum(d.lahan_diajukan)}</div>
+      <div class="kpi-label">Lahan Menunggu Verifikasi</div>
+    </div>
+  `;
+}
+
+function renderChartProduksi(data) {
+  if (chartProduksi) chartProduksi.destroy();
+  const ctx = document.getElementById('chart-produksi').getContext('2d');
+  const greens = ['#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2','#b7e4c7','#d8f3dc','#1b4332'];
+  chartProduksi = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.nama_wilayah.replace('Kabupaten ','Kab. ')),
+      datasets: [{
+        label: 'Produksi (Ton)',
+        data: data.map(d => d.total_ton),
+        backgroundColor: greens,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => v + ' ton' } },
+        x: { ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderChartVarietas(data) {
+  if (chartVarietas) chartVarietas.destroy();
+  const ctx = document.getElementById('chart-varietas').getContext('2d');
+  chartVarietas = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.nama_varietas),
+      datasets: [{
+        data: data.map(d => d.total_ton),
+        backgroundColor: ['#2d6a4f','#40916c','#74c69d','#e9c46a','#a0522d','#d4956a','#b7e4c7'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } }
+      }
+    }
+  });
+}
+
+function renderChartHarga(data) {
+  if (chartHarga) chartHarga.destroy();
+  const ctx = document.getElementById('chart-harga').getContext('2d');
+  chartHarga = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => fmtDate(d.tanggal)),
+      datasets: [{
+        label: 'Harga Rata-rata (Rp/kg)',
+        data: data.map(d => d.rata_harga),
+        borderColor: '#40916c',
+        backgroundColor: 'rgba(64,145,108,0.1)',
+        tension: 0.4, fill: true, pointRadius: 5,
+        pointBackgroundColor: '#2d6a4f'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: v => 'Rp ' + v.toLocaleString('id-ID') } }
+      }
+    }
+  });
+}
+
+function renderChartOPT(data) {
+  if (chartOPT) chartOPT.destroy();
+  const ctx = document.getElementById('chart-opt').getContext('2d');
+  const kat = data.per_kategori;
+  chartOPT = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: kat.map(d => d.kategori.charAt(0).toUpperCase() + d.kategori.slice(1)),
+      datasets: [
+        { label: 'Jumlah Laporan', data: kat.map(d => d.jumlah), backgroundColor: ['#f59e0b','#ef4444','#3b82f6'], borderRadius: 6 },
+        { label: 'Luas Terserang (Ha)', data: kat.map(d => d.total_ha), backgroundColor: ['#fbbf24','#fca5a5','#93c5fd'], borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+function renderLahanDiajukan(data) {
+  const tbody = document.querySelector('#tbl-diajukan tbody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">✅ Tidak ada lahan yang menunggu verifikasi</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(l => `
+    <tr>
+      <td><strong>${l.kode_lahan}</strong></td>
+      <td>${l.nama_petani}</td>
+      <td>${l.nama_wilayah}</td>
+      <td>${fmtHa(l.luas_ha)}</td>
+      <td>${l.status_kepemilikan}</td>
+      <td>
+        <a href="/lahan.html" class="btn btn-primary btn-sm">Verifikasi</a>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderOPTAktif(data) {
+  const tbody = document.querySelector('#tbl-opt tbody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">✅ Tidak ada laporan OPT aktif</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(o => `
+    <tr>
+      <td><strong>${o.nama_opt}</strong></td>
+      <td>${o.kategori}</td>
+      <td>${o.wilayah_nama || '-'}</td>
+      <td>${fmtDate(o.tanggal_lapor)}</td>
+      <td>${badgeTingkat(o.tingkat_serangan)}</td>
+      <td>${fmtHa(o.luas_terserang_ha)}</td>
+      <td>${badgeStatus(o.status)}</td>
+    </tr>
+  `).join('');
+}
+
+init();
+</script>
+</body>
+</html>
+
